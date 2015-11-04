@@ -566,9 +566,9 @@ class ConferenceApi(remote.Service):
             items=[self._copySessionToForm(session) for session in sessions]
         )
 
-    @endpoints.method(SESS_WISHLIST_POST_REQUEST, SessionForms,
+    @endpoints.method(SESS_WISHLIST_POST_REQUEST, BooleanMessage,
             path='sessions/{websafeSessionKey}/addtowishlist',
-            http_method='POST', name='getConferenceSessionsbySpeaker')
+            http_method='POST', name='addSessionWishlist')
     def addSessionWishlist(self, request, reg=True):
         """Register or unregister user for selected conference."""
         retval = None
@@ -576,45 +576,52 @@ class ConferenceApi(remote.Service):
 
         # check if conf exists given websafeConfKey
         # get conference; check that it exists
-        wsck = request.websafeConferenceKey
-        conf = ndb.Key(urlsafe=wsck).get()
-        if not conf:
+        wssk = request.websafeSessionKey
+        session = ndb.Key(urlsafe=wssk).get()
+        if not session:
             raise endpoints.NotFoundException(
-                'No conference found with key: %s' % wsck)
+                'No session found with key: %s' % wssk)
 
-        # register
-        if reg:
-            # check if user already registered otherwise add
-            if wsck in prof.conferenceKeysToAttend:
-                raise ConflictException(
-                    "You have already registered for this conference")
-
-            # check if seats avail
-            if conf.seatsAvailable <= 0:
-                raise ConflictException(
-                    "There are no seats available.")
-
-            # register user, take away one seat
-            prof.conferenceKeysToAttend.append(wsck)
-            conf.seatsAvailable -= 1
-            retval = True
-
-        # unregister
+        # TOFIX parent key returns None rather than the conference
+        # lookup parent conference
+        # logging.info("the session is {}".format(session))
+        # parent_conf = session.key.parent().get()
+        # logging.info("the parent conf is {}".format(parent_conf))
+        # check if user is registered for the parent conference
+        # otherwise advise them to register for conference
+        #if parent_conf not in prof.conferenceKeysToAttend:
+            #logging(
+                #"You are not registered for the conference {}. Please register to attend".format(parent_conf.name))
+            #raise ConflictException(
+                #"You are not registered for the conference {}. Please register to attend".format(parent_conf.name))
+        # check if user already has the session in their wishlist
+        if wssk in prof.conferenceKeysToAttend:
+            raise ConflictException(
+                "You have already added this session to your wishlist")
         else:
-            # check if user already registered
-            if wsck in prof.conferenceKeysToAttend:
-
-                # unregister user, add back one seat
-                prof.conferenceKeysToAttend.remove(wsck)
-                conf.seatsAvailable += 1
-                retval = True
-            else:
-                retval = False
+           prof.sessionKeysWishList.append(wssk)
+        retval = True
 
         # write things back to the datastore & return
         prof.put()
-        conf.put()
         return BooleanMessage(data=retval)
+
+    @endpoints.method(message_types.VoidMessage, SessionForms,
+            path='sessions/wishlist/get',
+            http_method='GET', name='getSessionsInWishlist')
+    def getSessionsInWishlist(self,request):
+        """Get the wishlist of sessions for a user."""
+        prof = self._getProfileFromUser() # get user Profile
+        # get the sessions the user has added to their wishlist
+        #logging.info(prof.sessionKeysWishList)
+        session_keys = [ndb.Key(urlsafe=wssk) for wssk in prof.sessionKeysWishList]
+        sessions = ndb.get_multi(session_keys)
+
+        # return set of SessionForm objects per Session
+        return SessionForms(
+            items=[self._copySessionToForm(session) for session in sessions]
+        )
+
 # - - - Announcements - - - - - - - - - - - - - - - - - - - -
 
     @staticmethod
