@@ -93,4 +93,10 @@ indexes:
 - kind: Conference
   properties:
   - name: topics
+  - name: city
+  - name: name
+
+- kind: Conference
+  properties:
+  - name: topics
   - name: name

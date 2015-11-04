@@ -27,6 +27,7 @@ class Profile(ndb.Model):
     mainEmail = ndb.StringProperty()
     teeShirtSize = ndb.StringProperty(default='NOT_SPECIFIED')
     conferenceKeysToAttend = ndb.StringProperty(repeated=True)
+    sessionKeysWishList = ndb.StringProperty(repeated=True)
 
 class ProfileMiniForm(messages.Message):
     """ProfileMiniForm -- update Profile form message"""
@@ -39,6 +40,7 @@ class ProfileForm(messages.Message):
     mainEmail = messages.StringField(2)
     teeShirtSize = messages.EnumField('TeeShirtSize', 3)
     conferenceKeysToAttend = messages.StringField(4, repeated=True)
+    sessionKeysWishList = messages.StringField(5, repeated=True)
 
 class StringMessage(messages.Message):
     """StringMessage-- outbound (single) string message"""
@@ -83,13 +85,29 @@ class ConferenceForms(messages.Message):
 class Session(ndb.Model):
     "Session --Session Object"
     name            = ndb.StringProperty(required=True)
-    highlights      = ndb.StringProperty()
+    highlights      = ndb.StringProperty(repeated=True)
     speaker         = ndb.StringProperty()
-    duration        = ndb.StringProperty()
+    duration        = ndb.IntegerProperty()
     typeOfSession   = ndb.StringProperty()
-    date            = ndb.DateProperty
-    startTime       = ndb.StringProperty()
+    date            = ndb.DateProperty()
+    startTime       = ndb.TimeProperty()
 
+class SessionForm(messages.Message):
+    """SessionForm -- session outbound form"""
+    name            = messages.StringField(1)
+    highlights      = messages.StringField(2, repeated=True)
+    speaker         = messages.StringField(3)
+    duration        = messages.IntegerField(4)
+    typeOfSession   = messages.StringField(5)
+    date            = messages.StringField(6)
+    startTime       = messages.StringField(7)
+    websafeKey      = messages.StringField(8)
+    websafeConferenceKey = messages.StringField(9)
+    #parentConferenceName = messages.StringField(10)
+
+class SessionForms(messages.Message):
+    """SessionForms -- multiple Session outbound form message"""
+    items = messages.MessageField(SessionForm, 1, repeated=True)
 
 class TeeShirtSize(messages.Enum):
     """TeeShirtSize -- t-shirt size enumeration value"""
