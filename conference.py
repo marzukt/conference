@@ -496,7 +496,15 @@ class ConferenceApi(remote.Service):
         print data
         Session(**data).put()
         print "added success"
-
+        # Add featured speaker update task if the session has a speaker
+        if data['speaker']:
+            params={'speaker': data['speaker'],
+                                  'websafeConferenceKey': request.websafeConferenceKey}
+            print params
+            taskqueue.add(params={'speaker': data['speaker'],
+                                  'websafeConferenceKey': request.websafeConferenceKey},
+                    url='/tasks/set_featured_speaker'
+            )
         return request
 
     @endpoints.method(SessionForm, SessionForm,
@@ -659,6 +667,34 @@ class ConferenceApi(remote.Service):
         return SessionForms(
             items=[self._copySessionToForm(session) for session in sessions]
         )
+
+# - - - Featured Speaker - - - - - - - - - - - - - - - - - - - -
+    @staticmethod
+    def _cacheFeaturedSpeaker(speaker,websafeConferenceKey):
+        """Set the Featured Speaker if a speaker has more than one
+        session in a conference
+        """
+        # check if the conference has more than one session by this speaker
+        # if so add as a featured speaker
+        conf = ndb.Key(urlsafe=websafeConferenceKey).get()
+        sessionsBySpeaker = Session.query(ancestor=ndb.Key(Conference,conf.key.id()))\
+                                   .filter(Session.speaker == speaker)
+        if sessionsBySpeaker.count > 1:
+            featuredSpeaker = {}
+            featuredSpeaker['speaker'] = speaker
+            featuredSpeaker['sessions'] = [session.name for session in sessionsBySpeaker]
+
+            memcache.set(MEMCACHE_FEATURED_SPEAKER_KEY, featuredSpeaker)
+
+    @endpoints.method(message_types.VoidMessage, StringMessage,
+            path='conference/featured_speaker/get',
+            http_method='GET', name='getfeaturedSpeaker')
+    def getFeaturedSpeaker(self,request):
+        """Return the Featured Speaker from memcache."""
+        featuredSpeaker = memcache.get(MEMCACHE_FEATURED_SPEAKER_KEY)
+        if not featuredSpeaker:
+            return StringMessage(data="")
+        return StringMessage(data=featuredSpeaker['speaker'])
 
 # - - - Announcements - - - - - - - - - - - - - - - - - - - -
 
