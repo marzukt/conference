@@ -467,7 +467,7 @@ class ConferenceApi(remote.Service):
         # check that user is the owner of the conference
         if user_id != conf.organizerUserId:
             raise endpoints.ForbiddenException(
-                'Only the conference owner can add a session to the conference {}.'.format(parentConferenceName))
+                'Only the conference owner can add a session to the conference {}.'.format(conf.name))
 
 
         # convert date from string to Date object
@@ -600,6 +600,20 @@ class ConferenceApi(remote.Service):
         sessions = Session.query(Session.highlights == request.highlights)
         return SessionForms(
             items=[self._copySessionToForm(session) for session in sessions]
+        )
+
+    @endpoints.method(message_types.VoidMessage, SessionForms,
+            path='sessions/latenonworkshops',
+            http_method='GET', name='getLateNonWorkshops')
+    def getLateNonWorkshops(self,request):
+        """Return non workshops sessions after 1900"""
+        filterTime = time(19)
+        filterSessionType = "workshop"
+        q = Session.query()
+        q = q.filter(Session.startTime >= filterTime)
+
+        return SessionForms(
+            items=[self._copySessionToForm(session) for session in q if session.typeOfSession != filterSessionType]
         )
 #  - - - - - - - - - - - - - - - - - - - - - Session wish lists - - - - - - - - - - - - - - - - - - - - -
 
