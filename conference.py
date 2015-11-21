@@ -442,7 +442,7 @@ class ConferenceApi(remote.Service):
 # - - - Session Objects - - - - - - - - - - - - - - - - - - - -
 
     def _createSessionObject(self, request):
-        """Create or update Session object, returning SessionForm/request."""
+        """Create Session object, returning SessionForm/request."""
         # preload necessary data items
         user = endpoints.get_current_user()
         if not user:
@@ -456,6 +456,7 @@ class ConferenceApi(remote.Service):
             raise endpoints.NotFoundException(
                 'No conference found with key: %s' % request.websafeConferenceKey)
 
+        # session must at least have a name
         if not request.name:
             raise endpoints.BadRequestException("Session 'name' field required")
 
@@ -463,7 +464,7 @@ class ConferenceApi(remote.Service):
         data = {field.name: getattr(request, field.name) for field in request.all_fields()}
         del data['websafeKey']
 
-        # check that user is owner
+        # check that user is the owner of the conference
         if user_id != conf.organizerUserId:
             raise endpoints.ForbiddenException(
                 'Only the conference owner can add a session to the conference {}.'.format(parentConferenceName))
@@ -479,23 +480,16 @@ class ConferenceApi(remote.Service):
             data['startTime'] = datetime.strptime(data['startTime'][:6], "%H:%M").time()
 
         # generate a unique Session id using the parent conference key
-        logging.info("and we have logging")
-        print conf
-        logging.info("and the conf key is:")
-        print conf.key.id()
         c_key = ndb.Key(Conference,conf.key.id())
-        print c_key
         s_id = Session.allocate_ids(size=1, parent=c_key)[0]
         # Generate a key using the Session ID and parent Conference key
         s_key = ndb.Key(Session, s_id, parent=c_key)
         data['key'] = s_key
-        # data['organizerUserId'] = request.organizerUserId = user_id
 
         # create Session and return modified SessionForm
         del data['websafeConferenceKey']
-        print data
         Session(**data).put()
-        print "added success"
+
         # Add featured speaker update task if the session has a speaker
         if data['speaker']:
             params={'speaker': data['speaker'],
@@ -525,13 +519,13 @@ class ConferenceApi(remote.Service):
                 'No conference found with key: %s' % request.websafeConferenceKey)
 
         sessions = Session.query(ancestor=ndb.Key(Conference,conf.key.id()))
-        # return set of ConferenceForm objects per Conference
+        # return set of SessionForm objects for the conference
         return SessionForms(
             items=[self._copySessionToForm(session) for session in sessions]
         )
 
     def _copySessionToForm(self, session):
-        """Copy relevant fields from Conference to ConferenceForm."""
+        """Copy relevant fields from Session to SessionForm."""
         sf = SessionForm()
         for field in sf.all_fields():
             if hasattr(session, field.name):
@@ -542,8 +536,6 @@ class ConferenceApi(remote.Service):
                     setattr(sf, field.name, getattr(session, field.name))
             elif field.name == "websafeKey":
                 setattr(sf, field.name, session.key.urlsafe())
-        #if displayName:
-        #    setattr(sf, 'organizerDisplayName', displayName)
         sf.check_initialized()
         return sf
 
@@ -551,24 +543,23 @@ class ConferenceApi(remote.Service):
             path='conference/{websafeConferenceKey}/sessions/{typeOfSession}',
             http_method='POST', name='getConferenceSessionsbyType')
     def getConferenceSessionsByType(self,request):
-        """Return conferences created by user."""
+        """Return conferences sessions by type"""
         conf = ndb.Key(urlsafe=request.websafeConferenceKey).get()
         if not conf:
             raise endpoints.NotFoundException(
                 'No conference found with key: %s' % request.websafeConferenceKey)
 
+        # require a type of session be provided
         if not request.typeOfSession:
             raise endpoints.BadRequestException(
                 'No session type provided')
         if request.typeOfSession == "":
-            logging.info("yipper")
             request.typeOfSession = None
-        logging.info("typeOfSession is: {} and has type: {}".format(request.typeOfSession,type(request.typeOfSession)))
 
         sessions = Session.query(ancestor=ndb.Key(Conference,conf.key.id()))
         sessions = sessions.filter(Session.typeOfSession == request.typeOfSession)
 
-        # return set of ConferenceForm objects per Conference
+        # return set of SessionForm objects
         return SessionForms(
             items=[self._copySessionToForm(session) for session in sessions]
         )
@@ -577,7 +568,7 @@ class ConferenceApi(remote.Service):
             path='sessions/byspeaker/{speaker}',
             http_method='POST', name='getSessionsbySpeaker')
     def getSessionsBySpeaker(self,request):
-        """Return conferences created by user."""
+        """Return all sessions by a given speaker."""
         sessions = Session.query(Session.speaker == request.speaker)
 
         # return set of ConferenceForm objects per Conference
@@ -616,7 +607,7 @@ class ConferenceApi(remote.Service):
             path='sessions/{websafeSessionKey}/addtowishlist',
             http_method='POST', name='addSessionWishlist')
     def addSessionWishlist(self, request, reg=True):
-        """Register or unregister user for selected conference session."""
+        """Add a given conference session to a user's wishlist."""
         retval = None
         prof = self._getProfileFromUser() # get user Profile
 
