@@ -1,32 +1,16 @@
-App Engine application for the Udacity training course.
+# Project 4 - Conference
 
-## Products
-- [App Engine][1]
+## Task 1
 
-## Language
-- [Python][2]
+Session implementation
+Each entity of the session kind is created with it’s parent conference as an ancestor. This allows efficient access to it’s parent conference using the ancestor relationship. As the ancestor relationship is permanent this means that it will not be possible to move sessions between conferences. 
+The duration is an integer property in minutes to allow for easy comparison on length of session. Highlights are implemented as a repeated field to allow them to be easily used as search tags for sessions.
+Speaker is implemented as a string of the speakers name.
 
-## APIs
-- [Google Cloud Endpoints][3]
+## Task 3
 
-## Setup Instructions
-1. Update the value of `application` in `app.yaml` to the app ID you
-   have registered in the App Engine admin console and would like to use to host
-   your instance of this sample.
-1. Update the values at the top of `settings.py` to
-   reflect the respective client IDs you have registered in the
-   [Developer Console][4].
-1. Update the value of CLIENT_ID in `static/js/app.js` to the Web client ID
-1. (Optional) Mark the configuration files as unchanged as follows:
-   `$ git update-index --assume-unchanged app.yaml settings.py static/js/app.js`
-1. Run the app with the devserver using `dev_appserver.py DIR`, and ensure it's running by visiting your local server's address (by default [localhost:8080][5].)
-1. (Optional) Generate your client library(ies) with [the endpoints tool][6].
-1. Deploy your application.
+Two additional queries were implemented:
+getShortSessions: This allows a search for all sessions that with a duration shorter than the defined length. 
+checkSessionHighlights: This allows for a search on all sessions for a specific highlight topic of interest
+The datastore is not able to process a query with an inequality on more than one property at a time. To workaround this limitation you can query with one filter and then filter the results  by the session type using python. I have implemented this in getLateNonWorkshops. 
 
-
-[1]: https://developers.google.com/appengine
-[2]: http://python.org
-[3]: https://developers.google.com/appengine/docs/python/endpoints/
-[4]: https://console.developers.google.com/
-[5]: https://localhost:8080/
-[6]: https://developers.google.com/appengine/docs/python/endpoints/endpoints_tool
