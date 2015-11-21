@@ -51,7 +51,7 @@ from utils import getUserId
 EMAIL_SCOPE = endpoints.EMAIL_SCOPE
 API_EXPLORER_CLIENT_ID = endpoints.API_EXPLORER_CLIENT_ID
 MEMCACHE_ANNOUNCEMENTS_KEY = "RECENT_ANNOUNCEMENTS"
-MEMCACHE_FEATURED_SPEAKER_KEY = ""
+MEMCACHE_FEATURED_SPEAKER_KEY = "FEATURED_SPEAKER"
 ANNOUNCEMENT_TPL = ('Last chance to attend! The following conferences '
                     'are nearly sold out: %s')
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -582,7 +582,10 @@ class ConferenceApi(remote.Service):
             http_method='GET', name='getShortSessions')
     def getShortSessions(self,request):
         """Return sessions which are shorter than a given length."""
-        short_dur = 30
+        if not request.duration:
+            short_dur = 30
+        else:
+            short_dur = request.duration
         sessions = Session.query(Session.duration <= short_dur)
 
         # return set of ConferenceForm objects per Conference
