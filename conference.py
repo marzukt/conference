@@ -13,7 +13,7 @@ created by wesc on 2014 apr 21
 __author__ = 'wesc+api@google.com (Wesley Chun)'
 
 
-from datetime import datetime
+from datetime import datetime, time
 
 import endpoints
 from protorpc import messages
@@ -51,6 +51,7 @@ from utils import getUserId
 EMAIL_SCOPE = endpoints.EMAIL_SCOPE
 API_EXPLORER_CLIENT_ID = endpoints.API_EXPLORER_CLIENT_ID
 MEMCACHE_ANNOUNCEMENTS_KEY = "RECENT_ANNOUNCEMENTS"
+MEMCACHE_FEATURED_SPEAKER_KEY = ""
 ANNOUNCEMENT_TPL = ('Last chance to attend! The following conferences '
                     'are nearly sold out: %s')
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -102,9 +103,18 @@ SESS_BYSPEAK_GET_REQUEST = endpoints.ResourceContainer(
     SessionForm,
     speaker=messages.StringField(1),
 )
+
 SESS_WISHLIST_POST_REQUEST = endpoints.ResourceContainer(
     SessionForm,
     websafeSessionKey=messages.StringField(1),
+)
+
+SHORT_SESSION_GET_REQUEST = endpoints.ResourceContainer(
+        duration = messages.IntegerField(1)
+    )
+
+SESS_HIGHLIGHT_GET_REQUEST = endpoints.ResourceContainer(
+    highlights = messages.StringField(1),
 )
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -486,6 +496,7 @@ class ConferenceApi(remote.Service):
         print data
         Session(**data).put()
         print "added success"
+
         return request
 
     @endpoints.method(SessionForm, SessionForm,
@@ -555,9 +566,9 @@ class ConferenceApi(remote.Service):
         )
 
     @endpoints.method(SESS_BYSPEAK_GET_REQUEST, SessionForms,
-            path='sessions/{speaker}',
-            http_method='POST', name='getConferenceSessionsbySpeaker')
-    def getConferenceSessionsBySpeaker(self,request):
+            path='sessions/byspeaker/{speaker}',
+            http_method='POST', name='getSessionsbySpeaker')
+    def getSessionsBySpeaker(self,request):
         """Return conferences created by user."""
         sessions = Session.query(Session.speaker == request.speaker)
 
@@ -566,16 +577,40 @@ class ConferenceApi(remote.Service):
             items=[self._copySessionToForm(session) for session in sessions]
         )
 
+    @endpoints.method(SHORT_SESSION_GET_REQUEST, SessionForms,
+            path='sessions/{duration}/short',
+            http_method='GET', name='getShortSessions')
+    def getShortSessions(self,request):
+        """Return sessions which are shorter than a given length."""
+        short_dur = 30
+        sessions = Session.query(Session.duration <= short_dur)
+
+        # return set of ConferenceForm objects per Conference
+        return SessionForms(
+            items=[self._copySessionToForm(session) for session in sessions]
+        )
+
+    @endpoints.method(SESS_HIGHLIGHT_GET_REQUEST, SessionForms,
+                      path='/sessions/highlights/{highlights}',
+                      http_method = 'GET', name='getSessionsHighlights')
+    def checkSessionHighlights(self,request):
+        """ Return Sessions with specific highlights"""
+        sessions = Session.query(Session.highlights == request.highlights)
+        return SessionForms(
+            items=[self._copySessionToForm(session) for session in sessions]
+        )
+#  - - - - - - - - - - - - - - - - - - - - - Session wish lists - - - - - - - - - - - - - - - - - - - - -
+
     @endpoints.method(SESS_WISHLIST_POST_REQUEST, BooleanMessage,
             path='sessions/{websafeSessionKey}/addtowishlist',
             http_method='POST', name='addSessionWishlist')
     def addSessionWishlist(self, request, reg=True):
-        """Register or unregister user for selected conference."""
+        """Register or unregister user for selected conference session."""
         retval = None
         prof = self._getProfileFromUser() # get user Profile
 
-        # check if conf exists given websafeConfKey
-        # get conference; check that it exists
+        # check if conf exists given websafeSessionKey
+        # get session; check that it exists
         wssk = request.websafeSessionKey
         session = ndb.Key(urlsafe=wssk).get()
         if not session:
@@ -595,7 +630,7 @@ class ConferenceApi(remote.Service):
             #raise ConflictException(
                 #"You are not registered for the conference {}. Please register to attend".format(parent_conf.name))
         # check if user already has the session in their wishlist
-        if wssk in prof.conferenceKeysToAttend:
+        if wssk in prof.sessionKeysWishList:
             raise ConflictException(
                 "You have already added this session to your wishlist")
         else:
@@ -748,23 +783,27 @@ class ConferenceApi(remote.Service):
         return self._conferenceRegistration(request, reg=False)
 
 
-    @endpoints.method(message_types.VoidMessage, ConferenceForms,
+    @endpoints.method(message_types.VoidMessage, SessionForms,
             path='filterPlayground',
             http_method='GET', name='filterPlayground')
     def filterPlayground(self, request):
         """Filter Playground"""
-        q = Conference.query()
+        filterTime = time(19)
+        filterSessionType = "workshop"
+        q = Session.query()
         # field = "city"
         # operator = "="
         # value = "London"
         # f = ndb.query.FilterNode(field, operator, value)
         # q = q.filter(f)
-        q = q.filter(Conference.city=="London")
-        q = q.filter(Conference.topics=="Medical Innovations")
-        q = q.filter(Conference.month==6)
+        q = q.filter(Session.startTime >= filterTime)
+        #q = q.filter(Session.highlights=="donkey")
+        #q = q.filter(session.)
+        #q = q.filter(Conference.topics=="Medical Innovations")
+        #q = q.filter(Conference.month==6)
 
-        return ConferenceForms(
-            items=[self._copyConferenceToForm(conf, "") for conf in q]
+        return SessionForms(
+            items=[self._copySessionToForm(session) for session in q if session.typeOfSession != filterSessionType]
         )
 
 
