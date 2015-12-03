@@ -492,7 +492,8 @@ class ConferenceApi(remote.Service):
 
         # create Session and return modified SessionForm
         del data['websafeConferenceKey']
-        Session(**data).put()
+        session = Session(**data)
+        session.put()
 
         # Add featured speaker update task if the session has a speaker
         if data['speaker']:
@@ -503,7 +504,8 @@ class ConferenceApi(remote.Service):
                                   'websafeConferenceKey': request.websafeConferenceKey},
                     url='/tasks/set_featured_speaker'
             )
-        return request
+
+        return self._copySessionToForm(session)
 
     @endpoints.method(SessionForm, SessionForm,
                       path='conference/{websafeConferenceKey}/createsession',
