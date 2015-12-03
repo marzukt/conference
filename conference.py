@@ -516,7 +516,7 @@ class ConferenceApi(remote.Service):
 
     @endpoints.method(SESS_POST_REQUEST, SessionForms,
             path='conference/{websafeConferenceKey}/sessions',
-            http_method='POST', name='getConferenceSessions')
+            http_method='GET', name='getConferenceSessions')
     def getConferenceSessions(self,request):
         """Return conference sessions for a given conference"""
         try:
