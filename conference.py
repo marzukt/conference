@@ -44,7 +44,7 @@ from settings import WEB_CLIENT_ID
 from settings import ANDROID_CLIENT_ID
 from settings import IOS_CLIENT_ID
 from settings import ANDROID_AUDIENCE
-
+from google.net.proto.ProtocolBuffer import ProtocolBufferDecodeError
 import logging
 from utils import getUserId
 
@@ -450,12 +450,16 @@ class ConferenceApi(remote.Service):
         user_id = getUserId(user)
 
         # Lookup the conference to add the session to
-        conf_key = ndb.Key(urlsafe=request.websafeConferenceKey)
-        conf = conf_key.get()
-        # check that conference exists
-        if not conf:
+        # raise an error if it doesn't exist
+        try:
+            conf_key = ndb.Key(urlsafe=request.websafeConferenceKey)
+            conf = conf_key.get()
+        except ProtocolBufferDecodeError:
             raise endpoints.NotFoundException(
                 'No conference found with key: %s' % request.websafeConferenceKey)
+        except TypeError:
+            raise endpoints.BadRequestException(
+                'session key must be a string')
 
         # session must at least have a name
         if not request.name:
@@ -513,11 +517,14 @@ class ConferenceApi(remote.Service):
             http_method='POST', name='getConferenceSessions')
     def getConferenceSessions(self,request):
         """Return conference sessions for a given conference"""
-        conf_key = ndb.Key(urlsafe=request.websafeConferenceKey)
-        conf = conf_key.get()
-        if not conf:
+        try:
+            conf_key = ndb.Key(urlsafe=request.websafeConferenceKey)
+        except ProtocolBufferDecodeError:
             raise endpoints.NotFoundException(
                 'No conference found with key: %s' % request.websafeConferenceKey)
+        except TypeError:
+            raise endpoints.BadRequestException(
+                'session key must be a string')
 
         sessions = Session.query(ancestor=ndb.Key(Conference,conf_key))
         # return set of SessionForm objects for the conference
@@ -545,11 +552,14 @@ class ConferenceApi(remote.Service):
             http_method='POST', name='getConferenceSessionsbyType')
     def getConferenceSessionsByType(self,request):
         """Return conferences sessions by type"""
-        conf_key = ndb.Key(urlsafe=request.websafeConferenceKey)
-        conf = conf_key.get()
-        if not conf:
+        try:
+            conf_key = ndb.Key(urlsafe=request.websafeConferenceKey)
+        except ProtocolBufferDecodeError:
             raise endpoints.NotFoundException(
                 'No conference found with key: %s' % request.websafeConferenceKey)
+        except TypeError:
+            raise endpoints.BadRequestException(
+                'session key must be a string')
 
         # require a type of session be provided
         if not request.typeOfSession:
