@@ -450,7 +450,8 @@ class ConferenceApi(remote.Service):
         user_id = getUserId(user)
 
         # Lookup the conference to add the session to
-        conf = ndb.Key(urlsafe=request.websafeConferenceKey).get()
+        conf_key = ndb.Key(urlsafe=request.websafeConferenceKey)
+        conf = conf_key.get()
         # check that conference exists
         if not conf:
             raise endpoints.NotFoundException(
@@ -480,10 +481,9 @@ class ConferenceApi(remote.Service):
             data['startTime'] = datetime.strptime(data['startTime'][:6], "%H:%M").time()
 
         # generate a unique Session id using the parent conference key
-        c_key = ndb.Key(Conference,conf.key.id())
-        s_id = Session.allocate_ids(size=1, parent=c_key)[0]
+        s_id = Session.allocate_ids(size=1, parent=conf_key)[0]
         # Generate a key using the Session ID and parent Conference key
-        s_key = ndb.Key(Session, s_id, parent=c_key)
+        s_key = ndb.Key(Session, s_id, parent=conf_key)
         data['key'] = s_key
 
         # create Session and return modified SessionForm
@@ -513,12 +513,13 @@ class ConferenceApi(remote.Service):
             http_method='POST', name='getConferenceSessions')
     def getConferenceSessions(self,request):
         """Return conference sessions for a given conference"""
-        conf = ndb.Key(urlsafe=request.websafeConferenceKey).get()
+        conf_key = ndb.Key(urlsafe=request.websafeConferenceKey)
+        conf = conf_key.get()
         if not conf:
             raise endpoints.NotFoundException(
                 'No conference found with key: %s' % request.websafeConferenceKey)
 
-        sessions = Session.query(ancestor=ndb.Key(Conference,conf.key.id()))
+        sessions = Session.query(ancestor=ndb.Key(Conference,conf_key))
         # return set of SessionForm objects for the conference
         return SessionForms(
             items=[self._copySessionToForm(session) for session in sessions]
@@ -544,7 +545,8 @@ class ConferenceApi(remote.Service):
             http_method='POST', name='getConferenceSessionsbyType')
     def getConferenceSessionsByType(self,request):
         """Return conferences sessions by type"""
-        conf = ndb.Key(urlsafe=request.websafeConferenceKey).get()
+        conf_key = ndb.Key(urlsafe=request.websafeConferenceKey)
+        conf = conf_key.get()
         if not conf:
             raise endpoints.NotFoundException(
                 'No conference found with key: %s' % request.websafeConferenceKey)
@@ -556,7 +558,7 @@ class ConferenceApi(remote.Service):
         if request.typeOfSession == "":
             request.typeOfSession = None
 
-        sessions = Session.query(ancestor=ndb.Key(Conference,conf.key.id()))
+        sessions = Session.query(ancestor=ndb.Key(Conference,conf_key))
         sessions = sessions.filter(Session.typeOfSession == request.typeOfSession)
 
         # return set of SessionForm objects
@@ -675,14 +677,14 @@ class ConferenceApi(remote.Service):
 
 # - - - Featured Speaker - - - - - - - - - - - - - - - - - - - -
     @staticmethod
-    def _cacheFeaturedSpeaker(speaker,websafeConferenceKey):
+    def _cacheFeaturedSpeaker(speaker, websafeConferenceKey):
         """Set the Featured Speaker if a speaker has more than one
         session in a conference
         """
         # check if the conference has more than one session by this speaker
         # if so add as a featured speaker
-        conf = ndb.Key(urlsafe=websafeConferenceKey).get()
-        sessionsBySpeaker = Session.query(ancestor=ndb.Key(Conference,conf.key.id()))\
+        conf_key = ndb.Key(urlsafe=websafeConferenceKey)
+        sessionsBySpeaker = Session.query(ancestor=ndb.Key(Conference,conf_key))\
                                    .filter(Session.speaker == speaker)
         if sessionsBySpeaker.count > 1:
             featuredSpeaker = {}
