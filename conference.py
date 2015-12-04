@@ -580,26 +580,29 @@ class ConferenceApi(remote.Service):
 
     @endpoints.method(SESS_BYSPEAK_GET_REQUEST, SessionForms,
             path='sessions/byspeaker/{speaker}',
-            http_method='POST', name='getSessionsbySpeaker')
+            http_method='GET', name='getSessionsbySpeaker')
     def getSessionsBySpeaker(self,request):
         """Return all sessions by a given speaker."""
         sessions = Session.query(Session.speaker == request.speaker)
 
-        # return set of ConferenceForm objects per Conference
+        # return a set of SessionForms
         return SessionForms(
             items=[self._copySessionToForm(session) for session in sessions]
         )
 
     @endpoints.method(SHORT_SESSION_GET_REQUEST, SessionForms,
-            path='sessions/{duration}/short',
+            path='sessions/short',
             http_method='GET', name='getShortSessions')
     def getShortSessions(self,request):
-        """Return sessions which are shorter than a given length."""
+        """Return sessions which are shorter than a given duration.
+           If no value is given duration defaults to 30 minutes
+        """
         if not request.duration:
             short_dur = 30
         else:
             short_dur = request.duration
-        sessions = Session.query(Session.duration <= short_dur)
+        sessions = Session.query(Session.duration <= short_dur)\
+                          .filter(Session.duration >= 0)
 
         # return set of ConferenceForm objects per Conference
         return SessionForms(
