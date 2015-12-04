@@ -629,6 +629,8 @@ class ConferenceApi(remote.Service):
         filterSessionType = "workshop"
         q = Session.query()
         q = q.filter(Session.startTime <= filterTime)
+        # exclude sessions with no start time
+        q = q.filter(Session.startTime >= time(00))
 
         return SessionForms(
             items=[self._copySessionToForm(session) for session in q if session.typeOfSession != filterSessionType]
