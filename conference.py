@@ -620,14 +620,14 @@ class ConferenceApi(remote.Service):
         )
 
     @endpoints.method(message_types.VoidMessage, SessionForms,
-            path='sessions/latenonworkshops',
-            http_method='GET', name='getLateNonWorkshops')
-    def getLateNonWorkshops(self,request):
-        """Return non workshops sessions after 1900"""
+            path='sessions/earlynonworkshops',
+            http_method='GET', name='getEarlyNonWorkshops')
+    def getEarlyNonWorkshops(self,request):
+        """Return non workshops sessions before 1900"""
         filterTime = time(19)
         filterSessionType = "workshop"
         q = Session.query()
-        q = q.filter(Session.startTime >= filterTime)
+        q = q.filter(Session.startTime <= filterTime)
 
         return SessionForms(
             items=[self._copySessionToForm(session) for session in q if session.typeOfSession != filterSessionType]
