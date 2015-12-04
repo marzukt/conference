@@ -650,18 +650,13 @@ class ConferenceApi(remote.Service):
             raise endpoints.NotFoundException(
                 'No session found with key: %s' % wssk)
 
-        # TOFIX parent key returns None rather than the conference
         # lookup parent conference
-        # logging.info("the session is {}".format(session))
-        # parent_conf = session.key.parent().get()
-        # logging.info("the parent conf is {}".format(parent_conf))
+        parent_conf = session.key.parent().get()
         # check if user is registered for the parent conference
         # otherwise advise them to register for conference
-        #if parent_conf not in prof.conferenceKeysToAttend:
-            #logging(
-                #"You are not registered for the conference {}. Please register to attend".format(parent_conf.name))
-            #raise ConflictException(
-                #"You are not registered for the conference {}. Please register to attend".format(parent_conf.name))
+        if parent_conf.key.urlsafe() not in prof.conferenceKeysToAttend:
+            raise ConflictException(
+                "You are not registered for the conference {}. Please register to attend".format(getattr(parent_conf,'name')))
         # check if user already has the session in their wishlist
         if wssk in prof.sessionKeysWishList:
             raise ConflictException(
