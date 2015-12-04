@@ -528,7 +528,8 @@ class ConferenceApi(remote.Service):
             raise endpoints.BadRequestException(
                 'session key must be a string')
 
-        sessions = Session.query(ancestor=ndb.Key(Conference,conf_key))
+        sessions = Session.query(ancestor=conf_key)
+        # sessions = Session.query(ancestor=ndb.Key(Conference,conf_key))
         # return set of SessionForm objects for the conference
         return SessionForms(
             items=[self._copySessionToForm(session) for session in sessions]
@@ -570,8 +571,8 @@ class ConferenceApi(remote.Service):
         if request.typeOfSession == "":
             request.typeOfSession = None
 
-        sessions = Session.query(ancestor=ndb.Key(Conference,conf_key))
-        sessions = sessions.filter(Session.typeOfSession == request.typeOfSession)
+        sessions = Session.query(ancestor=conf_key)\
+                          .filter(Session.typeOfSession == request.typeOfSession)
 
         # return set of SessionForm objects
         return SessionForms(
@@ -694,7 +695,7 @@ class ConferenceApi(remote.Service):
         # check if the conference has more than one session by this speaker
         # if so add as a featured speaker
         conf_key = ndb.Key(urlsafe=websafeConferenceKey)
-        sessionsBySpeaker = Session.query(ancestor=ndb.Key(Conference,conf_key))\
+        sessionsBySpeaker = Session.query(ancestor=conf_key)\
                                    .filter(Session.speaker == speaker)
         if sessionsBySpeaker.count > 1:
             featuredSpeaker = {}
