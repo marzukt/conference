@@ -456,10 +456,10 @@ class ConferenceApi(remote.Service):
             conf = conf_key.get()
         except ProtocolBufferDecodeError:
             raise endpoints.NotFoundException(
-                'No conference found with key: %s' % request.websafeConferenceKey)
+                'No conference found with key: {}'.format(request.websafeConferenceKey))
         except TypeError:
             raise endpoints.BadRequestException(
-                'session key must be a string')
+                'Conference key must be a string')
 
         # session must at least have a name
         if not request.name:
@@ -523,10 +523,10 @@ class ConferenceApi(remote.Service):
             conf_key = ndb.Key(urlsafe=request.websafeConferenceKey)
         except ProtocolBufferDecodeError:
             raise endpoints.NotFoundException(
-                'No conference found with key: %s' % request.websafeConferenceKey)
+                'No conference found with key: {}'.format(request.websafeConferenceKey))
         except TypeError:
             raise endpoints.BadRequestException(
-                'session key must be a string')
+                'Conference key must be a string')
 
         sessions = Session.query(ancestor=conf_key)
         # sessions = Session.query(ancestor=ndb.Key(Conference,conf_key))
@@ -648,10 +648,18 @@ class ConferenceApi(remote.Service):
         # check if conf exists given websafeSessionKey
         # get session; check that it exists
         wssk = request.websafeSessionKey
-        session = ndb.Key(urlsafe=wssk).get()
-        if not session:
+        try:
+            sessionKey = ndb.Key(urlsafe=wssk)
+            session = sessionKey.get()
+        except ProtocolBufferDecodeError:
             raise endpoints.NotFoundException(
-                'No session found with key: %s' % wssk)
+                'No session found with key: {}'.format(wssk))
+        except TypeError:
+            raise endpoints.BadRequestException(
+                'session key must be a string')
+        if session.key.kind() != 'Session':
+            raise endpoints.BadRequestException(
+                'Key is not a session key')
 
         # lookup parent conference
         parent_conf = session.key.parent().get()
@@ -661,11 +669,11 @@ class ConferenceApi(remote.Service):
             raise ConflictException(
                 "You are not registered for the conference {}. Please register to attend".format(getattr(parent_conf,'name')))
         # check if user already has the session in their wishlist
-        if wssk in prof.sessionKeysWishList:
+        if sessionKey in prof.sessionKeysWishList:
             raise ConflictException(
                 "You have already added this session to your wishlist")
         else:
-           prof.sessionKeysWishList.append(wssk)
+           prof.sessionKeysWishList.append(sessionKey)
         retval = True
 
         # write things back to the datastore & return
@@ -680,7 +688,7 @@ class ConferenceApi(remote.Service):
         prof = self._getProfileFromUser() # get user Profile
         # get the sessions the user has added to their wishlist
         #logging.info(prof.sessionKeysWishList)
-        session_keys = [ndb.Key(urlsafe=wssk) for wssk in prof.sessionKeysWishList]
+        session_keys = [session_key for session_key in prof.sessionKeysWishList]
         sessions = ndb.get_multi(session_keys)
 
         # return set of SessionForm objects per Session
