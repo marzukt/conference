@@ -4,7 +4,7 @@
 1. Clone this repository
 1. Create a project in Google Developers Console
 1. In `app.yaml` update the value of application to the Project ID of your project in Google Developers Console.
-1. Create an Oauth2 clientId and add your apps urls as authorized javascript origins
+1. In the Developers Console create an Oauth2 clientId and add your apps urls as authorized javascript origins
 1. In `settings.py` update the Client IDs at the top of the file with the client ids you have registered
 1. (Optional) In order to use the web interface  update the client id in `static/js/app.js`
 1. Run the app on the devserver using `dev_appserver.py DIR` and ensure it is running(by default at localhost:8080)
