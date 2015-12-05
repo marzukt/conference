@@ -39,6 +39,7 @@ from models import TeeShirtSize
 from models import Session
 from models import SessionForm
 from models import SessionForms
+from models import FeaturedSpeakerForm
 
 from settings import WEB_CLIENT_ID
 from settings import ANDROID_CLIENT_ID
@@ -714,7 +715,7 @@ class ConferenceApi(remote.Service):
 
             memcache.set(MEMCACHE_FEATURED_SPEAKER_KEY, featuredSpeaker)
 
-    @endpoints.method(message_types.VoidMessage, StringMessage,
+    @endpoints.method(message_types.VoidMessage, FeaturedSpeakerForm,
             path='conference/featured_speaker/get',
             http_method='GET', name='getfeaturedSpeaker')
     def getFeaturedSpeaker(self,request):
@@ -722,7 +723,8 @@ class ConferenceApi(remote.Service):
         featuredSpeaker = memcache.get(MEMCACHE_FEATURED_SPEAKER_KEY)
         if not featuredSpeaker:
             return StringMessage(data="")
-        return StringMessage(data=featuredSpeaker['speaker'])
+        return FeaturedSpeakerForm(speakerName=featuredSpeaker['speaker'],
+                           sessionNames = featuredSpeaker['sessions'])
 
 # - - - Announcements - - - - - - - - - - - - - - - - - - - -
 
